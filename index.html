@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qube プロンプトジェネレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #f0f9ff;
+        }
+        .form-input, .form-select, .form-textarea, .form-radio {
+            border-color: #cbd5e1;
+            transition: all 0.2s ease;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3);
+            outline: none;
+        }
+        .form-radio:checked {
+            border-color: #0ea5e9;
+            background-color: #0ea5e9;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+    <div class="container mx-auto p-4 md:p-8 max-w-4xl">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <div class="flex justify-center items-center gap-4 mb-2">
+                <img src="https://placehold.co/64x64/0ea5e9/ffffff?text=Q" alt="Qube Logo" class="rounded-xl">
+                <h1 class="text-3xl md:text-4xl font-bold text-sky-600">Qube プロンプトジェネレーター</h1>
+            </div>
+            <p class="text-slate-500">生成AIを使って、学習アプリ「Qube」で読み込めるクイズファイルを作成するためのプロンプトを生成します。</p>
+        </header>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Input Form -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2 text-slate-700">1. クイズの情報を入力</h2>
+                <form id="prompt-form" class="space-y-6">
+                    <div>
+                        <label for="projectName" class="block text-sm font-medium text-slate-600 mb-1">プロジェクト名</label>
+                        <input type="text" id="projectName" class="form-input w-full p-2 border rounded-md" value="歴史クイズ">
+                    </div>
+                    <div>
+                        <label for="quizName" class="block text-sm font-medium text-slate-600 mb-1">クイズ名</label>
+                        <input type="text" id="quizName" class="form-input w-full p-2 border rounded-md" value="江戸時代編">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-2">クイズの作成方法</label>
+                        <div class="flex space-x-4 p-2 bg-slate-50 rounded-lg">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="creationMethod" value="text" checked class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                <span class="ml-2 text-sm text-slate-700">テーマ・内容から作成</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="creationMethod" value="file" class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                <span class="ml-2 text-sm text-slate-700">ファイルから作成</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="fileOptionsContainer" class="hidden space-y-2 pt-3 pl-3 border-l-2 border-slate-200">
+                        <label class="block text-sm font-medium text-slate-600">ファイル内容の扱い方</label>
+                        <div class="flex flex-col space-y-2">
+                             <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="fileMethod" value="convert" checked class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                <span class="ml-2 text-sm text-slate-700">ファイルをそのままクイズ化</span>
+                            </label>
+                            <label class="flex items-center cursor-pointer">
+                                <input type="radio" name="fileMethod" value="generate" class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                <span class="ml-2 text-sm text-slate-700">ファイル内容から新しく生成</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="quizContentContainer">
+                        <label for="quizContent" class="block text-sm font-medium text-slate-600 mb-1">クイズのテーマ・内容</label>
+                        <textarea id="quizContent" rows="6" class="form-textarea w-full p-2 border rounded-md" placeholder="例: 「徳川家康は江戸幕府を開きました...」のような文章、または「日本の歴史、江戸時代についてのクイズ」のような指示を入力" required></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="questionCount" class="block text-sm font-medium text-slate-600 mb-1">問題数</label>
+                            <select id="questionCount" class="form-select w-full p-2 border rounded-md bg-white">
+                                <option value="5">5問</option>
+                                <option value="10" selected>10問</option>
+                                <option value="15">15問</option>
+                                <option value="20">20問</option>
+                                <option value="all" style="display: none;">全て</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="questionType" class="block text-sm font-medium text-slate-600 mb-1">問題形式</label>
+                            <select id="questionType" class="form-select w-full p-2 border rounded-md bg-white">
+                                <option value="auto_select">AIにおまかせ</option>
+                                <option value="multiple_choice">選択肢</option>
+                                <option value="fill_in_the_blank">記述式</option>
+                                <option value="sorting">並び替え</option>
+                                <option value="multiple_select">複数選択</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <button type="submit" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-md hover:shadow-lg">
+                            プロンプトを生成
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Output Area -->
+            <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col">
+                <h2 class="text-xl font-bold mb-4 border-b pb-2 text-slate-700">2. プロンプトをコピーして利用</h2>
+                <div class="relative flex-grow">
+                    <textarea id="output-prompt" class="form-textarea w-full h-full p-3 border rounded-md bg-slate-50 resize-none" readonly placeholder="ここにプロンプトが生成されます..."></textarea>
+                    <button id="copy-button" class="absolute top-2 right-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-1 px-3 rounded-md text-sm transition">
+                        コピー
+                    </button>
+                </div>
+                 <div class="mt-4 text-sm text-slate-500 bg-slate-100 p-3 rounded-lg">
+                    <p class="font-semibold mb-1">使い方:</p>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>(ファイルから作成する場合) ChatGPT等にファイルをアップロードします。</li>
+                        <li>このプロンプトをコピーし、AIに貼り付けて送信します。</li>
+                        <li>AIが生成した `.txt` ファイルをダウンロードします。</li>
+                        <li>Qubeの「外部から読み込む」機能でそのファイルを選択します。</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: JSON to TXT Converter -->
+        <div class="mt-8 bg-white p-6 rounded-2xl shadow-lg">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2 text-slate-700">3. JSONをTXTファイルに変換＆ダウンロード</h2>
+            <p class="text-sm text-slate-500 mb-4">AIが生成したJSONコードを以下に貼り付け、ファイルとしてダウンロードします。</p>
+            <div class="space-y-4">
+                <div>
+                    <label for="json-input" class="block text-sm font-medium text-slate-600 mb-1">AIが生成したJSONコード</label>
+                    <textarea id="json-input" rows="8" class="form-textarea w-full p-3 border rounded-md bg-slate-50 resize-vertical" placeholder="ここにAIが生成した一行のJSONを貼り付けてください..."></textarea>
+                </div>
+                <div>
+                    <label for="filename-input" class="block text-sm font-medium text-slate-600 mb-1">ファイル名 (.txt)</label>
+                    <input type="text" id="filename-input" class="form-input w-full p-2 border rounded-md" value="qube_quiz.txt">
+                </div>
+                <div>
+                    <button id="download-button" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow-md hover:shadow-lg">
+                        TXTファイルとしてダウンロード
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('prompt-form');
+            const outputPrompt = document.getElementById('output-prompt');
+            const copyButton = document.getElementById('copy-button');
+            const creationMethodRadios = document.querySelectorAll('input[name="creationMethod"]');
+            const fileOptionsContainer = document.getElementById('fileOptionsContainer');
+            const quizContentContainer = document.getElementById('quizContentContainer');
+            const quizContentLabel = quizContentContainer.querySelector('label');
+            const quizContentTextarea = document.getElementById('quizContent');
+            const questionCountSelect = document.getElementById('questionCount');
+            const allOption = questionCountSelect.querySelector('option[value="all"]');
+            
+            // New elements for Step 3
+            const jsonInput = document.getElementById('json-input');
+            const filenameInput = document.getElementById('filename-input');
+            const downloadButton = document.getElementById('download-button');
+            const projectNameInput = document.getElementById('projectName');
+
+            // Initialize filename
+            const initialProjectName = projectNameInput.value.trim().replace(/ /g, '_');
+            if (initialProjectName) {
+                filenameInput.value = `${initialProjectName}.txt`;
+            }
+
+            // Update filename when project name changes
+            projectNameInput.addEventListener('input', (e) => {
+                const name = e.target.value.trim().replace(/ /g, '_');
+                if (name) {
+                    filenameInput.value = `${name}.txt`;
+                } else {
+                    filenameInput.value = 'qube_quiz.txt';
+                }
+            });
+
+            creationMethodRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value === 'file') {
+                        fileOptionsContainer.classList.remove('hidden');
+                        quizContentLabel.textContent = '追加の指示（任意）';
+                        quizContentTextarea.placeholder = '例: このファイルの内容で、特に重要な部分から出題してください。';
+                        quizContentTextarea.required = false;
+                        allOption.style.display = 'block'; // Show the "All" option
+                    } else {
+                        fileOptionsContainer.classList.add('hidden');
+                        quizContentLabel.textContent = 'クイズのテーマ・内容';
+                        quizContentTextarea.placeholder = '例: 「徳川家康は江戸幕府を開きました...」のような文章、または「日本の歴史、江戸時代についてのクイズ」のような指示を入力';
+                        quizContentTextarea.required = true;
+                        allOption.style.display = 'none'; // Hide the "All" option
+                        if (questionCountSelect.value === 'all') {
+                            questionCountSelect.value = '10'; // Reset selection if "All" was chosen
+                        }
+                    }
+                });
+            });
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+
+                const projectName = document.getElementById('projectName').value;
+                const quizName = document.getElementById('quizName').value;
+                const quizContent = document.getElementById('quizContent').value;
+                const questionCountValue = document.getElementById('questionCount').value;
+                const questionType = document.getElementById('questionType').value;
+                const creationMethod = document.querySelector('input[name="creationMethod"]:checked').value;
+
+                if (creationMethod === 'text' && !quizContent.trim()) {
+                    alert('クイズのテーマ・内容を入力してください。');
+                    return;
+                }
+
+                let questionTypeInstruction = '';
+                if (questionType === 'auto_select') {
+                    questionTypeInstruction = '各問題の内容に最も適した問題形式（`multiple_choice`, `multiple_select`, `fill_in_the_blank`, `sorting`のいずれか）をAIが自動で判断して設定してください。';
+                } else {
+                    questionTypeInstruction = `全ての問題形式を必ず \`${questionType}\` に統一してください。`;
+                }
+                
+                let questionCountInstruction = questionCountValue === 'all' 
+                    ? 'ファイルに含まれる全て' 
+                    : `${questionCountValue}問`;
+
+                let mainInstruction = '';
+                let contentInstruction = '';
+
+                if (creationMethod === 'file') {
+                    mainInstruction = 'あなたは、学習アプリ「Qube」で読み込み可能なTXTファイルを生成するエキスパートAIです。\nアップロードされたファイルを分析し、以下の指示とJSONフォーマットの仕様に厳密に従って、クイズデータを作成してください。';
+                    const fileMethod = document.querySelector('input[name="fileMethod"]:checked').value;
+                    if (fileMethod === 'convert') {
+                        contentInstruction = `- ファイル処理: アップロードされたファイルに含まれる問題、選択肢、解答を一切改変せずに、そのままJSONデータに変換してください。`;
+                    } else { // generate
+                        contentInstruction = `- ファイル処理: アップロードされたファイルの内容を深く理解し、その内容に基づいた新しいクイズ問題を生成してください。`;
+                    }
+                    if (quizContent.trim()) {
+                        contentInstruction += `\n- 追加指示: ${quizContent.trim()}`;
+                    }
+                } else {
+                    mainInstruction = 'あなたは、学習アプリ「Qube」で読み込み可能なTXTファイルを生成するエキスパートAIです。\n以下の指示とJSONフォーマットの仕様に厳密に従って、提供されたテーマに関するクイズデータを作成してください。';
+                    contentInstruction = `- 問題のテーマ/内容:\n---\n${quizContent}\n---`;
+                }
+
+                const outputFormatInstruction = `- 最重要: 出力は、解説や前置き、コードブロックの囲み(\`\`\`json ... \`\`\`)を一切含まず、指定されたJSONデータそのものをテキストとして持つ、\`${projectName.replace(/ /g, '_')}.txt\`という名前のダウンロード可能なファイルを生成してください。JSONデータは必ず一行で出力してください。`;
+                
+                const prompt = `
+${mainInstruction}
+
+# 生成ルール
+${outputFormatInstruction}
+- JSONは、下記の「JSONフォーマットの仕様」で定義された構造を完全に遵守してください。
+- \`answer\`フィールドには、\`options\`や\`items\`に含まれる正解のテキストそのものを、配列形式で正確に格納してください。
+- \`mastery\`オブジェクトを必ず含め、全ての習熟度（値）を\`0\`に設定してください。キーは問題のインデックス番号（0から始まる）です。
+- プロジェクトの\`id\`とクイズの\`id\`、\`createdAt\`はAIが適切に生成してください。
+- 指定された問題形式と異なるタイプのキーは含めないか、\`null\`または空配列(\`[]\`)にしてください。（例: \`multiple_choice\`の場合、\`items\`キーは不要）
+
+# 今回作成するクイズの要件
+- プロジェクト名: ${projectName}
+- クイズ名: ${quizName}
+- 問題数: ${questionCountInstruction}
+- 問題形式: ${questionTypeInstruction}
+- 解説: 全ての問題に、正解の理由がわかる簡潔で分かりやすい日本語の解説を必ず付けてください。
+${contentInstruction}
+
+# JSONフォーマットの仕様 (この構造を一行のテキストとしてファイルに出力):
+\`\`\`json
+{
+  "id": "proj_（AIが生成したユニークなID）",
+  "name": "${projectName}",
+  "quizzes": [
+    {
+      "id": "quiz_（AIが生成したユニークなID）",
+      "name": "${quizName}",
+      "createdAt": "（AIが生成したISO 8601形式の日付）",
+      "questions": [
+        {
+          "question": "（問題文）",
+          "type": "（指定された問題形式）",
+          "options": ["（選択肢1）", "（選択肢2）"],
+          "items": null,
+          "answer": ["（正解の選択肢テキスト）"],
+          "explanation": "（問題の解説文）",
+          "long_content": null,
+          "image_source": false
+        }
+      ],
+      "images": []
+    }
+  ],
+  "mastery": {
+    "quiz_（上記quizzes.idと同じID）": {
+      "0": 0
+    }
+  }
+}
+\`\`\`
+`;
+                outputPrompt.value = prompt.trim();
+                copyButton.textContent = 'コピー';
+            });
+
+            copyButton.addEventListener('click', () => {
+                if (!outputPrompt.value) return;
+                outputPrompt.select();
+                document.execCommand('copy');
+                copyButton.textContent = 'コピー完了!';
+                setTimeout(() => {
+                    copyButton.textContent = 'コピー';
+                }, 2000);
+            });
+
+            // Download button logic
+            downloadButton.addEventListener('click', () => {
+                const jsonText = jsonInput.value.trim();
+                let filename = filenameInput.value.trim();
+
+                if (!jsonText) {
+                    alert('JSONコードを入力してください。');
+                    return;
+                }
+
+                if (!filename) {
+                    filename = 'qube_quiz.txt';
+                } else if (!filename.endsWith('.txt')) {
+                    filename += '.txt';
+                }
+
+                const blob = new Blob([jsonText], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+
+        });
+    </script>
+</body>
+</html>
+
