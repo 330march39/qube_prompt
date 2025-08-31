@@ -11,7 +11,7 @@
             font-family: 'Noto Sans JP', 'Inter', sans-serif;
             background-color: #f0f9ff;
         }
-        .form-input, .form-select, .form-textarea, .form-radio {
+        .form-input, .form-select, .form-textarea, .form-radio, .form-checkbox {
             border-color: #cbd5e1;
             transition: all 0.2s ease;
         }
@@ -20,7 +20,7 @@
             box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.3);
             outline: none;
         }
-        .form-radio:checked {
+        .form-radio:checked, .form-checkbox:checked {
             border-color: #0ea5e9;
             background-color: #0ea5e9;
         }
@@ -45,11 +45,11 @@
                 <form id="prompt-form" class="space-y-6">
                     <div>
                         <label for="projectName" class="block text-sm font-medium text-slate-600 mb-1">プロジェクト名</label>
-                        <input type="text" id="projectName" class="form-input w-full p-2 border rounded-md" value="歴史クイズ">
+                        <input type="text" id="projectName" class="form-input w-full p-2 border rounded-md" value="プロジェクト">
                     </div>
                     <div>
-                        <label for="quizName" class="block text-sm font-medium text-slate-600 mb-1">クイズ名</label>
-                        <input type="text" id="quizName" class="form-input w-full p-2 border rounded-md" value="江戸時代編">
+                        <label for="quizName" class="block text-sm font-medium text-slate-600 mb-1">クイズ名（単一クイズの場合）</label>
+                        <input type="text" id="quizName" class="form-input w-full p-2 border rounded-md" value="クイズ1">
                     </div>
 
                     <div>
@@ -66,17 +66,36 @@
                         </div>
                     </div>
 
-                    <div id="fileOptionsContainer" class="hidden space-y-2 pt-3 pl-3 border-l-2 border-slate-200">
-                        <label class="block text-sm font-medium text-slate-600">ファイル内容の扱い方</label>
-                        <div class="flex flex-col space-y-2">
-                             <label class="flex items-center cursor-pointer">
-                                <input type="radio" name="fileMethod" value="convert" checked class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
-                                <span class="ml-2 text-sm text-slate-700">ファイルをそのままクイズ化</span>
-                            </label>
-                            <label class="flex items-center cursor-pointer">
-                                <input type="radio" name="fileMethod" value="generate" class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
-                                <span class="ml-2 text-sm text-slate-700">ファイル内容から新しく生成</span>
-                            </label>
+                    <div id="fileOptionsContainer" class="hidden space-y-4 pt-3 pl-3 border-l-2 border-slate-200">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600">ファイル内容の扱い方</label>
+                            <div class="flex flex-col space-y-2 mt-1">
+                                 <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="fileMethod" value="convert" checked class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                    <span class="ml-2 text-sm text-slate-700">ファイルをそのままクイズ化</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="fileMethod" value="generate" class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                    <span class="ml-2 text-sm text-slate-700">ファイル内容から新しく生成</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div id="quizSplitOptions">
+                            <label class="block text-sm font-medium text-slate-600">クイズの分割方法</label>
+                            <div class="flex flex-col space-y-2 mt-1">
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="splitMethod" value="no_split" checked class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                    <span class="ml-2 text-sm text-slate-700">分割しない（1つのクイズを作成）</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="splitMethod" value="auto_split" class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                    <span class="ml-2 text-sm text-slate-700">内容をAIが判断して分割</span>
+                                </label>
+                                <label class="flex items-center cursor-pointer">
+                                    <input type="radio" name="splitMethod" value="file_split" class="form-radio h-4 w-4 text-sky-600 focus:ring-sky-500">
+                                    <span class="ml-2 text-sm text-slate-700">ファイルごとにクイズを分割</span>
+                                </label>
+                            </div>
                         </div>
                     </div>
 
@@ -171,7 +190,10 @@
             const quizContentTextarea = document.getElementById('quizContent');
             const questionCountSelect = document.getElementById('questionCount');
             const allOption = questionCountSelect.querySelector('option[value="all"]');
-            
+            const quizNameInput = document.getElementById('quizName');
+            const quizNameLabel = document.querySelector('label[for="quizName"]');
+            const splitMethodRadios = document.querySelectorAll('input[name="splitMethod"]');
+
             // New elements for Step 3
             const jsonInput = document.getElementById('json-input');
             const filenameInput = document.getElementById('filename-input');
@@ -194,6 +216,22 @@
                 }
             });
 
+            function toggleQuizNameField() {
+                const isFileMethod = document.querySelector('input[name="creationMethod"]:checked').value === 'file';
+                const splitMethod = document.querySelector('input[name="splitMethod"]:checked').value;
+                const isMultiple = isFileMethod && splitMethod !== 'no_split';
+                
+                if (isMultiple) {
+                    quizNameInput.disabled = true;
+                    quizNameInput.classList.add('bg-slate-100');
+                    quizNameLabel.textContent = 'クイズ名（AIが自動生成）';
+                } else {
+                    quizNameInput.disabled = false;
+                    quizNameInput.classList.remove('bg-slate-100');
+                    quizNameLabel.textContent = 'クイズ名（単一クイズの場合）';
+                }
+            }
+
             creationMethodRadios.forEach(radio => {
                 radio.addEventListener('change', (e) => {
                     if (e.target.value === 'file') {
@@ -201,29 +239,35 @@
                         quizContentLabel.textContent = '追加の指示（任意）';
                         quizContentTextarea.placeholder = '例: このファイルの内容で、特に重要な部分から出題してください。';
                         quizContentTextarea.required = false;
-                        allOption.style.display = 'block'; // Show the "All" option
+                        allOption.style.display = 'block';
                     } else {
                         fileOptionsContainer.classList.add('hidden');
                         quizContentLabel.textContent = 'クイズのテーマ・内容';
                         quizContentTextarea.placeholder = '例: 「徳川家康は江戸幕府を開きました...」のような文章、または「日本の歴史、江戸時代についてのクイズ」のような指示を入力';
                         quizContentTextarea.required = true;
-                        allOption.style.display = 'none'; // Hide the "All" option
+                        allOption.style.display = 'none'; 
                         if (questionCountSelect.value === 'all') {
-                            questionCountSelect.value = '10'; // Reset selection if "All" was chosen
+                            questionCountSelect.value = '10';
                         }
                     }
+                    toggleQuizNameField();
                 });
             });
+
+            splitMethodRadios.forEach(radio => radio.addEventListener('change', toggleQuizNameField));
+
 
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
 
-                const projectName = document.getElementById('projectName').value;
-                const quizName = document.getElementById('quizName').value;
-                const quizContent = document.getElementById('quizContent').value;
-                const questionCountValue = document.getElementById('questionCount').value;
+                const projectName = projectNameInput.value;
+                const quizName = quizNameInput.value;
+                const quizContent = quizContentTextarea.value;
+                const questionCountValue = questionCountSelect.value;
                 const questionType = document.getElementById('questionType').value;
                 const creationMethod = document.querySelector('input[name="creationMethod"]:checked').value;
+                const splitMethod = document.querySelector('input[name="splitMethod"]:checked').value;
+                const createMultipleQuizzes = creationMethod === 'file' && splitMethod !== 'no_split';
 
                 if (creationMethod === 'text' && !quizContent.trim()) {
                     alert('クイズのテーマ・内容を入力してください。');
@@ -240,50 +284,15 @@
                 let questionCountInstruction = questionCountValue === 'all' 
                     ? 'ファイルに含まれる全て' 
                     : `${questionCountValue}問`;
+                if(createMultipleQuizzes) {
+                    questionCountInstruction += "（各クイズごと）";
+                }
 
                 let mainInstruction = '';
                 let contentInstruction = '';
-
-                if (creationMethod === 'file') {
-                    mainInstruction = 'あなたは、学習アプリ「Qube」で読み込み可能なTXTファイルを生成するエキスパートAIです。\nアップロードされたファイルを分析し、以下の指示とJSONフォーマットの仕様に厳密に従って、クイズデータを作成してください。';
-                    const fileMethod = document.querySelector('input[name="fileMethod"]:checked').value;
-                    if (fileMethod === 'convert') {
-                        contentInstruction = `- ファイル処理: アップロードされたファイルに含まれる問題、選択肢、解答を一切改変せずに、そのままJSONデータに変換してください。`;
-                    } else { // generate
-                        contentInstruction = `- ファイル処理: アップロードされたファイルの内容を深く理解し、その内容に基づいた新しいクイズ問題を生成してください。`;
-                    }
-                    if (quizContent.trim()) {
-                        contentInstruction += `\n- 追加指示: ${quizContent.trim()}`;
-                    }
-                } else {
-                    mainInstruction = 'あなたは、学習アプリ「Qube」で読み込み可能なTXTファイルを生成するエキスパートAIです。\n以下の指示とJSONフォーマットの仕様に厳密に従って、提供されたテーマに関するクイズデータを作成してください。';
-                    contentInstruction = `- 問題のテーマ/内容:\n---\n${quizContent}\n---`;
-                }
-
-                const outputFormatInstruction = `- 最重要: 出力は、解説や前置き、コードブロックの囲み(\`\`\`json ... \`\`\`)を一切含まず、指定されたJSONデータそのものをテキストとして持つ、\`${projectName.replace(/ /g, '_')}.txt\`という名前のダウンロード可能なファイルを生成してください。JSONデータは必ず一行で出力してください。`;
+                let quizNameInstruction = `- クイズ名: ${quizName}`;
                 
-                const prompt = `
-${mainInstruction}
-
-# 生成ルール
-${outputFormatInstruction}
-- JSONは、下記の「JSONフォーマットの仕様」で定義された構造を完全に遵守してください。
-- \`answer\`フィールドには、\`options\`や\`items\`に含まれる正解のテキストそのものを、配列形式で正確に格納してください。
-- \`mastery\`オブジェクトを必ず含め、全ての習熟度（値）を\`0\`に設定してください。キーは問題のインデックス番号（0から始まる）です。
-- プロジェクトの\`id\`とクイズの\`id\`、\`createdAt\`はAIが適切に生成してください。
-- 指定された問題形式と異なるタイプのキーは含めないか、\`null\`または空配列(\`[]\`)にしてください。（例: \`multiple_choice\`の場合、\`items\`キーは不要）
-
-# 今回作成するクイズの要件
-- プロジェクト名: ${projectName}
-- クイズ名: ${quizName}
-- 問題数: ${questionCountInstruction}
-- 問題形式: ${questionTypeInstruction}
-- 解説: 全ての問題に、正解の理由がわかる簡潔で分かりやすい日本語の解説を必ず付けてください。
-${contentInstruction}
-
-# JSONフォーマットの仕様 (この構造を一行のテキストとしてファイルに出力):
-\`\`\`json
-{
+                let jsonSpec = `{
   "id": "proj_（AIが生成したユニークなID）",
   "name": "${projectName}",
   "quizzes": [
@@ -311,7 +320,87 @@ ${contentInstruction}
       "0": 0
     }
   }
-}
+}`;
+
+                if (creationMethod === 'file') {
+                    const fileMethod = document.querySelector('input[name="fileMethod"]:checked').value;
+                    if (fileMethod === 'convert') {
+                        contentInstruction = `- ファイル処理: アップロードされたファイルに含まれる問題、選択肢、解答を一切改変せずに、そのままJSONデータに変換してください。`;
+                    } else { // generate
+                        contentInstruction = `- ファイル処理: アップロードされたファイルの内容を深く理解し、その内容に基づいた新しいクイズ問題を生成してください。`;
+                    }
+
+                    if (createMultipleQuizzes) {
+                        mainInstruction = 'あなたは、学習アプリ「Qube」で読み込み可能なTXTファイルを生成するエキスパートAIです。\nアップロードされたファイルを分析し、以下の指示とJSONフォーマットの仕様に厳密に従って、複数のクイズデータを作成してください。';
+                        
+                        let splitInstruction = '';
+                        if (splitMethod === 'auto_split') {
+                            quizNameInstruction = `- クイズ名: ファイルの内容（章、レッスン、トピックなど）に合わせて、AIが自動で複数のクイズ名を生成してください。`;
+                            splitInstruction = `- 分割指示: ファイルの内容を意味のあるまとまり（章、レッスンなど）で自動的に判断し、それぞれを別のクイズとして生成してください。`;
+                        } else { // file_split
+                            quizNameInstruction = `- クイズ名: アップロードされた各ファイル名を元に、それぞれのクイズ名を生成してください。（例: \`file1.txt\` -> \`クイズ「file1」\`）`;
+                            splitInstruction = `- 分割指示: アップロードされたファイルごとに、それぞれ独立したクイズを作成してください。`;
+                        }
+                        contentInstruction += `\n${splitInstruction}`;
+
+                        jsonSpec = `{
+  "id": "proj_（AIが生成したユニークなID）",
+  "name": "${projectName}",
+  "quizzes": [
+    {
+      "id": "quiz_（AIが生成したユニークなID_1）",
+      "name": "（例: レッスン1）",
+      "createdAt": "（AIが生成したISO 8601形式の日付）",
+      "questions": [ /* ... questions ... */ ]
+    },
+    {
+      "id": "quiz_（AIが生成したユニークなID_2）",
+      "name": "（例: レッスン2）",
+      "createdAt": "（AIが生成したISO 8601形式の日付）",
+      "questions": [ /* ... questions ... */ ]
+    }
+  ],
+  "mastery": {
+    "quiz_（上記quizzes.idと同じID_1）": { "0": 0 },
+    "quiz_（上記quizzes.idと同じID_2）": { "0": 0 }
+  }
+}`;
+                    } else {
+                         mainInstruction = 'あなたは、学習アプリ「Qube」で読み込み可能なTXTファイルを生成するエキスパートAIです。\nアップロードされたファイルを分析し、以下の指示とJSONフォーマットの仕様に厳密に従って、クイズデータを作成してください。';
+                    }
+                    
+                    if (quizContent.trim()) {
+                        contentInstruction += `\n- 追加指示: ${quizContent.trim()}`;
+                    }
+                } else {
+                    mainInstruction = 'あなたは、学習アプリ「Qube」で読み込み可能なTXTファイルを生成するエキスパートAIです。\n以下の指示とJSONフォーマットの仕様に厳密に従って、提供されたテーマに関するクイズデータを作成してください。';
+                    contentInstruction = `- 問題のテーマ/内容:\n---\n${quizContent}\n---`;
+                }
+
+                const outputFormatInstruction = `- 最重要: 出力は、解説や前置き、コードブロックの囲み(\`\`\`json ... \`\`\`)を一切含まず、指定されたJSONデータそのものをテキストとして持つ、\`${projectName.replace(/ /g, '_')}.txt\`という名前のダウンロード可能なファイルを生成してください。JSONデータは必ず一行で出力してください。`;
+                
+                const prompt = `
+${mainInstruction}
+
+# 生成ルール
+${outputFormatInstruction}
+- JSONは、下記の「JSONフォーマットの仕様」で定義された構造を完全に遵守してください。
+- \`answer\`フィールドには、\`options\`や\`items\`に含まれる正解のテキストそのものを、配列形式で正確に格納してください。
+- \`mastery\`オブジェクトを必ず含め、全ての習熟度（値）を\`0\`に設定してください。キーは問題のインデックス番号（0から始まる）です。
+- プロジェクトの\`id\`とクイズの\`id\`、\`createdAt\`はAIが適切に生成してください。
+- 指定された問題形式と異なるタイプのキーは含めないか、\`null\`または空配列(\`[]\`)にしてください。（例: \`multiple_choice\`の場合、\`items\`キーは不要）
+
+# 今回作成するクイズの要件
+- プロジェクト名: ${projectName}
+${quizNameInstruction}
+- 問題数: ${questionCountInstruction}
+- 問題形式: ${questionTypeInstruction}
+- 解説: 全ての問題に、正解の理由がわかる簡潔で分かりやすい日本語の解説を必ず付けてください。
+${contentInstruction}
+
+# JSONフォーマットの仕様 (この構造を一行のテキストとしてファイルに出力):
+\`\`\`json
+${jsonSpec}
 \`\`\`
 `;
                 outputPrompt.value = prompt.trim();
